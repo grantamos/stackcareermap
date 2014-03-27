@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+
+    <title>Stackoverflow Careers Map</title>
+
+    <style>
+	    html,
+		body {
+		  height: 100%;
+		  background-color: #333;
+		}
+    </style>
+
+	<link href='https://api.tiles.mapbox.com/mapbox.js/v1.6.2/mapbox.css' rel='stylesheet' />
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+	<div id='content' class='container'>
+	<div class="row">
+		<div id='side-panel' class='col-md-4'></div>
+		<div id='map' class='col-md-8'></div>
+
+	</div>
+	</div>
+
+	<script src="http://code.jquery.com/jquery-2.1.0.min.js"></script>
+
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+	<!-- Optional theme -->
+	<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+	<!-- Latest compiled and minified JavaScript -->
+	<script src="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+	<script src='https://api.tiles.mapbox.com/mapbox.js/v1.6.2/mapbox.js'></script>
+
+	<script>
+
+	var map = L.mapbox.map('map', 'grantamos.hkn5ckfg');
+	var geocoder = L.mapbox.geocoder('grantamos.hkn5ckfg');
+	var pageSize = 20;
+	var pages = 0;
+	var posts = [];
+
+	function buildMarkers() {
+
+		var featureCollection = {
+			'type': 'FeatureCollection'
+		};
+
+		var features = [];
+
+		for(var i in posts) {
+			var post = posts[i];
+			features.push({
+				type: 'Feature',
+				geometry: {
+					type: 'Point',
+					coordinates: post.lnglat
+				},
+				properties: {
+					title: post.title,
+					description: post.description
+				}
+			});
+		}
+
+		featureCollection['features'] = features;
+
+		L.mapbox.featureLayer(featureCollection).addTo(map);
+	}
+
+	$.ajax({
+		url: 'http://careers.stackoverflow.com/jobs/feed?searchTerm=android',
+		success: function(feed) {
+			$(feed).find('item').each(function(index, item){
+				pages++;
+				var postUrl = $(this).find('link').text();
+				var postTitle = $(this).find('title').text();
+				var postDescription = $(this).find('description').text();
+
+				$.ajax({
+					url: postUrl,
+					success: function(response) {
+						var location = $(response).find('span.location').text().trim();
+						geocoder.query(location, function(err, data){
+							console.log(data);
+							posts.push({
+								lnglat: [data.latlng[1], data.latlng[0]],
+								title: postTitle,
+								description: postDescription,
+								link: postUrl
+							});
+
+							if (posts.length >= pageSize)
+								buildMarkers();
+						});
+					}
+				});
+
+				if(pages > pageSize) {
+					return false;
+				}
+			});
+		}
+	});
+
+	</script>
+
+  </body>
+</html>
